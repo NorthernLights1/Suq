@@ -1,12 +1,307 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../../features/auth/presentation/providers/shop_provider.dart';
+import '../../../../shared/router/app_routes.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_text_styles.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  int _selectedIndex = 0;
+
+  static const _navItems = [
+    NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+    NavigationDestination(icon: Icon(Icons.point_of_sale_outlined), selectedIcon: Icon(Icons.point_of_sale), label: 'Sales'),
+    NavigationDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2), label: 'Inventory'),
+    NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Customers'),
+    NavigationDestination(icon: Icon(Icons.more_horiz), selectedIcon: Icon(Icons.more_horiz), label: 'More'),
+  ];
+
+  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Dashboard — coming in Phase 3')),
+    final shop = ref.watch(currentShopProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: shop.when(
+          data: (s) => Text(s?.name ?? 'Suq'),
+          loading: () => const Text('Suq'),
+          error: (e, st) => const Text('Suq'),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authNotifierProvider.notifier).signOut();
+              if (context.mounted) context.go(AppRoutes.login);
+            },
+          ),
+        ],
+      ),
+      body: _buildBody(),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+        destinations: _navItems,
+        backgroundColor: Colors.white,
+        indicatorColor: AppColors.primaryLight,
+      ),
+      floatingActionButton: _selectedIndex == 1
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push(AppRoutes.newSale),
+              icon: const Icon(Icons.add),
+              label: const Text('New Sale'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            )
+          : null,
+    );
+  }
+
+  Widget _buildBody() {
+    return switch (_selectedIndex) {
+      0 => const _HomeTab(),
+      1 => const _PlaceholderTab(icon: Icons.point_of_sale_outlined, label: 'Sales', subtitle: 'Coming in Phase 3'),
+      2 => const _PlaceholderTab(icon: Icons.inventory_2_outlined, label: 'Inventory', subtitle: 'Coming in Phase 3'),
+      3 => const _PlaceholderTab(icon: Icons.people_outline, label: 'Customers', subtitle: 'Coming in Phase 3'),
+      _ => const _MoreTab(),
+    };
+  }
+}
+
+// ─── Home Tab ───────────────────────────────────────────────────────────────
+
+class _HomeTab extends ConsumerWidget {
+  const _HomeTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final branches = ref.watch(currentShopBranchesProvider);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Branch selector
+          branches.when(
+            data: (list) => list.isEmpty
+                ? const SizedBox.shrink()
+                : _BranchChip(branches: list),
+            loading: () => const LinearProgressIndicator(),
+            error: (e, st) => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 20),
+          Text("Today's Summary", style: AppTextStyles.headline3),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _SummaryCard(label: 'Sales', value: 'ETB 0', icon: Icons.trending_up, color: AppColors.success),
+              const SizedBox(width: 12),
+              _SummaryCard(label: 'Transactions', value: '0', icon: Icons.receipt_outlined, color: AppColors.primary),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _SummaryCard(label: 'Expenses', value: 'ETB 0', icon: Icons.money_off_outlined, color: AppColors.warning),
+              const SizedBox(width: 12),
+              _SummaryCard(label: 'Net', value: 'ETB 0', icon: Icons.account_balance_wallet_outlined, color: AppColors.info),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text('Quick Actions', style: AppTextStyles.headline3),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 3,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.1,
+            children: [
+              _QuickAction(icon: Icons.point_of_sale, label: 'New Sale', route: AppRoutes.newSale),
+              _QuickAction(icon: Icons.inventory_2_outlined, label: 'Inventory', route: AppRoutes.inventory),
+              _QuickAction(icon: Icons.people_outline, label: 'Customers', route: AppRoutes.customers),
+              _QuickAction(icon: Icons.money_off_outlined, label: 'Expenses', route: AppRoutes.expenses),
+              _QuickAction(icon: Icons.bar_chart, label: 'Reports', route: AppRoutes.reports),
+              _QuickAction(icon: Icons.settings_outlined, label: 'Settings', route: AppRoutes.settings),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BranchChip extends ConsumerWidget {
+  const _BranchChip({required this.branches});
+  final List branches;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = ref.watch(activeBranchProvider);
+    final display = active ?? (branches.isNotEmpty ? branches.first : null);
+
+    if (display == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.location_on, size: 14, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(display.name as String, style: AppTextStyles.label.copyWith(color: AppColors.primary)),
+          const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.label, required this.value, required this.icon, required this.color});
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(value, style: AppTextStyles.headline3),
+            Text(label, style: AppTextStyles.label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({required this.icon, required this.label, required this.route});
+  final IconData icon;
+  final String label;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push(route),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.primary, size: 26),
+            const SizedBox(height: 6),
+            Text(label, style: AppTextStyles.label, textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── More Tab ───────────────────────────────────────────────────────────────
+
+class _MoreTab extends ConsumerWidget {
+  const _MoreTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _MoreTile(icon: Icons.money_off_outlined, label: 'Expenses', route: AppRoutes.expenses),
+        _MoreTile(icon: Icons.bar_chart, label: 'Reports', route: AppRoutes.reports),
+        _MoreTile(icon: Icons.people_outline, label: 'Staff', route: AppRoutes.staff),
+        _MoreTile(icon: Icons.settings_outlined, label: 'Settings', route: AppRoutes.settings),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.logout, color: AppColors.error),
+          title: Text('Sign Out', style: TextStyle(color: AppColors.error)),
+          onTap: () async {
+            await ref.read(authNotifierProvider.notifier).signOut();
+            if (context.mounted) context.go(AppRoutes.login);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _MoreTile extends StatelessWidget {
+  const _MoreTile({required this.icon, required this.label, required this.route});
+  final IconData icon;
+  final String label;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.textSecondary),
+      title: Text(label, style: AppTextStyles.body),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+      onTap: () => context.push(route),
+    );
+  }
+}
+
+// ─── Placeholder Tab ────────────────────────────────────────────────────────
+
+class _PlaceholderTab extends StatelessWidget {
+  const _PlaceholderTab({required this.icon, required this.label, required this.subtitle});
+  final IconData icon;
+  final String label;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 64, color: AppColors.textDisabled),
+          const SizedBox(height: 16),
+          Text(label, style: AppTextStyles.headline3),
+          const SizedBox(height: 8),
+          Text(subtitle, style: AppTextStyles.bodySmall),
+        ],
+      ),
     );
   }
 }

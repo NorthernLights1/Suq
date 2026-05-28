@@ -1,1 +1,2 @@
-export 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// l10n generated file will be exported here once flutter gen-l10n is run.
+// Run: flutter gen-l10n
