@@ -1,116 +1,83 @@
 # Commands Reference — Suq ERP
 
-All Flutter commands must be run from `c:/Projects/MobERP/suq/` unless noted.
+All Flutter commands run from `c:/Projects/MobERP/suq/` unless noted.
 
 ---
 
-## Run app in Chrome (dev target)
-
+## Run app (Chrome)
 ```bash
 cd suq && flutter run -d chrome
 ```
-
-Purpose: Launch the app in Chrome for development and testing.
-Result: Works. Chrome is the only confirmed working target (Android SDK not installed).
-Notes: Hot reload available. Full restart needed after router or DI changes.
+Result: Works. Chrome is the only confirmed target (Android SDK not installed).
+Rerun next session: Yes — to test Phase 3 sales features.
 
 ---
 
-## Check for issues
-
+## Static analysis
 ```bash
 cd suq && flutter analyze
 ```
-
-Purpose: Static analysis — catches type errors, unused imports, lint warnings.
-Result: Must be clean (0 issues) before committing.
-Notes: Run after every significant code change.
+Result: 0 issues (as of last run on feat/phase-2-auth-onboarding).
+Rerun next session: Yes — after every code change, before committing.
 
 ---
 
 ## Install dependencies
-
 ```bash
 cd suq && flutter pub get
 ```
-
-Purpose: Resolve and download all packages in `pubspec.yaml`.
-Result: Downloads ~143 packages. Also triggers l10n generation.
-Notes: Requires Windows Developer Mode enabled (for symlink support).
+Result: 143 packages resolved. Requires Windows Developer Mode enabled.
+Rerun next session: Only if `pubspec.yaml` changes.
 
 ---
 
-## Generate l10n files
-
+## Regenerate l10n
 ```bash
 cd suq && flutter gen-l10n
 ```
-
-Purpose: Generate `app_localizations.dart` from `.arb` files in `suq/lib/l10n/`.
-Result: Creates/updates `suq/lib/l10n/app_localizations.dart` and `app_localizations_en.dart`.
-Notes: Run whenever `app_en.arb` is modified.
+Result: Generates `suq/lib/l10n/app_localizations.dart` + `app_localizations_en.dart`.
+Rerun next session: Only if `suq/lib/l10n/app_en.arb` is modified.
 
 ---
 
-## Run build_runner (for Drift + Riverpod code gen)
-
+## Build runner (Drift + Riverpod codegen)
 ```bash
 cd suq && dart run build_runner build --delete-conflicting-outputs
 ```
-
-Purpose: Generate Drift table classes and Riverpod `@riverpod` annotations.
-Result: Not yet needed (Drift not wired, no `@riverpod` annotations used yet).
-Notes: Will be required in Phase 5 when Drift schema is added.
+Result: Not yet run — no generated code needed until Phase 5 (Drift).
+Rerun next session: No — until Drift schema is added.
 
 ---
 
-## Create a new git branch
-
+## Create new branch
 ```bash
-cd .. && git checkout -b feat/<name>
+cd c:/Projects/MobERP && git checkout -b feat/phase-3-sales
 ```
-
-Purpose: Start a new feature branch per CLAUDE.md git workflow.
-Notes: Always branch from latest `main`. Never push directly to main.
+Result: Not yet run. This is the next branch to create.
+Rerun next session: Yes — run this first when starting Phase 3.
 
 ---
 
 ## Push to Suq repo
-
 ```bash
 git push suq <branch-name>
 ```
-
-Purpose: Push to `NorthernLights1/Suq` on GitHub.
-Notes: `origin` points to `nextlevelbuilder/ui-ux-pro-max-skill` (no push access). Use `suq` remote.
-
----
-
-## Run Supabase SQL migration
-
-No CLI set up. Apply migrations manually:
-1. Open https://supabase.com/dashboard → your project → SQL Editor
-2. Paste contents of `supabase/migrations/00X_name.sql`
-3. Run in order: 001 → 002 → 003 → 004 → 005 → 006
+Result: Works. Remote `suq` = `https://github.com/NorthernLights1/Suq.git`
+Note: `origin` = `nextlevelbuilder/ui-ux-pro-max-skill` (no push access). Always use `suq`.
 
 ---
 
-## Check Flutter + Dart version
-
-```bash
-flutter --version
-```
-
-Result: Flutter 3.44.0 • Dart 3.12.0 • DevTools 2.57.0 (as of 2026-05-29)
+## Apply Supabase migrations (manual)
+No CLI. Use Supabase Dashboard → SQL Editor.
+Run files in order: 001 → 002 → 003 → 004 → 005 → 006
+Status: All 6 migrations applied to live project. DB trigger fix also applied manually.
+Rerun next session: No — unless schema changes are needed.
 
 ---
 
-## Enable Windows Developer Mode (required once)
-
+## Enable Windows Developer Mode (one-time)
 ```powershell
 start ms-settings:developers
 ```
-
-Purpose: Flutter needs symlink support for plugin builds on Windows.
-Result: Toggle "Developer Mode" on in the settings window that opens.
-Notes: One-time setup. Without it, `flutter pub get` fails with a symlink error.
+Result: Done. Toggle Developer Mode on. Required for Flutter plugin symlinks on Windows.
+Rerun next session: No — already enabled.

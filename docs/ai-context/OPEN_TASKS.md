@@ -6,62 +6,58 @@ Last updated: 2026-05-29
 
 ## Immediate — Phase 3: Sales Module
 
-Priority order:
+Build in this order:
 
-1. **Sale domain model** — `suq/lib/domain/models/sale.dart`
-   `Sale`, `SaleItem`, `Discount` with `decimal` types, `product_name_snapshot`
+1. **`suq/lib/domain/models/sale.dart`**
+   `Sale`, `SaleItem`, `Discount`, `Refund` models. Use `Decimal` not `double`. Include `product_name_snapshot`.
 
-2. **Sales remote data source** — `suq/lib/features/sales/data/sales_remote.dart`
-   Supabase queries: create sale + items + inventory adjustment in a single transaction
+2. **`suq/lib/features/sales/data/sales_remote.dart`**
+   Supabase: create sale + items + inventory_adjustment in one transaction. Respect `inventory_mode` from `shop_settings`.
 
-3. **Sales repository** — `suq/lib/features/sales/domain/sales_repository.dart`
-   Interface + implementation combining local (stub) + remote
+3. **`suq/lib/features/sales/domain/sales_repository.dart`**
+   Interface + implementation (Supabase-only for now, Drift stub).
 
-4. **Sales Riverpod providers** — `suq/lib/features/sales/presentation/providers/`
-   Active sale state, product search, cart management
+4. **`suq/lib/features/sales/presentation/providers/sales_provider.dart`**
+   Cart state (active sale items), product search, payment method selection.
 
-5. **New Sale screen** — `suq/lib/features/sales/presentation/screens/new_sale_screen.dart`
-   Product search, add to cart, set quantity/price, apply discount, choose payment method, submit
+5. **`suq/lib/features/sales/presentation/screens/new_sale_screen.dart`**
+   Product search → add to cart → set qty/price → apply discount → pick payment method → submit.
+   Must check `PermissionService` for `sales.create`.
 
-6. **Sales list screen** — `suq/lib/features/sales/presentation/screens/sales_screen.dart`
-   List today's sales, filter by date, tap to view detail
+6. **`suq/lib/features/sales/presentation/screens/sales_screen.dart`**
+   List today's sales. Filter by date. Tap → detail.
 
-7. **Sale detail + void flow** — void requires reason, calls `PermissionService` for `sales.void`
+7. **Sale detail + void flow**
+   Void requires reason + `PermissionService` check for `sales.void`.
+   Refund checks `sales.refund_own` vs `sales.refund_any`.
 
-8. **Inventory adjustment on sale** — auto-create `inventory_adjustments` record on each sale
+8. **Inventory adjustment on sale**
+   Auto-create `inventory_adjustments` row (`type: 'sale'`) per sale item.
+   Respect `inventory_mode`: `flexible` = warn + flag, `strict` = block.
 
-9. **Wire sales route in router** — replace `_ShellPage` for `/sales` and `/sales/new`
+9. **Wire sales routes in router**
+   Replace `_ShellPage` stubs for `/sales` and `/sales/new` in `app_router.dart`.
 
----
-
-## Follow-up — Phase 4 Modules
-
-In order of business importance:
-
-- **Inventory module** — product CRUD, stock levels, manual adjustments, low-stock alerts
-- **Customers module** — customer list, credit balance, transaction history
-- **Expenses module** — record expense, category picker, daily summary
-- **Reports module** — daily/weekly/monthly summaries, export via `ExportService`
-- **Staff module** — invite by email, assign role, suspend
-- **Settings module** — shop name, branch management, inventory mode toggle, currency
+10. **Update dashboard summary cards**
+    Replace static "ETB 0" with real today's totals from Supabase.
 
 ---
 
-## Optional Improvements
+## Follow-up — Phase 4 (after sales)
 
-- Add `.gitattributes` to normalize CRLF warnings on Windows
-- Wire Drift local DB for true offline-first (Phase 5)
-- Add `SyncService` background polling when online
-- Low-stock notification trigger via `NotificationService`
-- Cash reconciliation screen
-- Android SDK setup (currently Chrome-only)
-- Install Android Studio to unblock Android builds
+- Inventory: product CRUD, stock levels, manual adjustments, low-stock alerts
+- Customers: list, credit balance, transaction history
+- Expenses: record expense, category picker
+- Reports: daily/weekly/monthly, export via `ExportService`
+- Staff: invite by email, assign role, suspend
+- Settings: inventory mode toggle, currency, branch management
 
 ---
 
 ## Blocked / Unclear
 
-- **Chapa payment integration** — out of scope v1, `payment_methods` table is ready
-- **Amharic (am) localization** — l10n layer ready, translations not started
-- **Drift schema** — needs design before Phase 5; must mirror all 6 Supabase domains
-- **Supabase Edge Functions** for notifications — not yet written; `NotificationService` logs `pending` rows only
+- **Drift offline DB** — not designed yet; needed for Phase 5
+- **Chapa payments** — out of scope v1; `payment_methods` table ready
+- **Amharic l10n** — l10n layer ready; translations not started
+- **Supabase Edge Functions** — `NotificationService` logs `pending` rows only; no function deployed yet
+- **Android builds** — blocked until Android Studio installed
