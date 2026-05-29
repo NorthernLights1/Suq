@@ -70,7 +70,7 @@ class InventoryRemote {
   Future<List<StockEntry>> getStockLevels(String branchId) async {
     final data = await _client
         .from('inventory')
-        .select('product_id, quantity, updated_at, products(name, low_stock_threshold, selling_price, measurement_units(abbreviation))')
+        .select('product_id, quantity, expiry_date, updated_at, products(id, name, low_stock_threshold, selling_price, measurement_unit_id, measurement_units(abbreviation))')
         .eq('branch_id', branchId)
         .order('products(name)');
     return (data as List).map((e) => StockEntry.fromJson(e)).toList();
@@ -81,12 +81,13 @@ class InventoryRemote {
     required String productId,
     required Decimal quantity,
     required String adjustedBy,
+    DateTime? expiryDate,
   }) async {
-    // Upsert inventory row
     await _client.from('inventory').upsert({
       'branch_id': branchId,
       'product_id': productId,
       'quantity': quantity.toString(),
+      'expiry_date': expiryDate?.toIso8601String().substring(0, 10),
       'updated_at': DateTime.now().toIso8601String(),
     });
 
@@ -107,11 +108,13 @@ class InventoryRemote {
     required Decimal currentQuantity,
     required String adjustedBy,
     required String notes,
+    DateTime? expiryDate,
   }) async {
     await _client.from('inventory').upsert({
       'branch_id': branchId,
       'product_id': productId,
       'quantity': newQuantity.toString(),
+      'expiry_date': expiryDate?.toIso8601String().substring(0, 10),
       'updated_at': DateTime.now().toIso8601String(),
     });
 
@@ -144,22 +147,34 @@ class StockEntry {
   const StockEntry({
     required this.productId,
     required this.productName,
+    required this.measurementUnitId,
     required this.quantity,
     required this.lowStockThreshold,
     this.sellingPrice,
     required this.unitAbbr,
+    this.expiryDate,
     required this.updatedAt,
   });
 
   final String productId;
   final String productName;
+  final String measurementUnitId;
   final Decimal quantity;
   final Decimal lowStockThreshold;
   final Decimal? sellingPrice;
   final String unitAbbr;
+  final DateTime? expiryDate;
   final DateTime updatedAt;
 
-  bool get isLowStock => quantity <= lowStockThreshold;
+  bool get isLowStock => quantity <= lowStockThreshold && lowStockThreshold > Decimal.zero;
+
+  bool get isExpired =>
+      expiryDate != null && expiryDate!.isBefore(DateTime.now());
+
+  bool get isExpiringSoon =>
+      expiryDate != null &&
+      !isExpired &&
+      expiryDate!.isBefore(DateTime.now().add(const Duration(days: 7)));
 
   factory StockEntry.fromJson(Map<String, dynamic> json) {
     final product = json['products'] as Map<String, dynamic>? ?? {};
@@ -167,13 +182,17 @@ class StockEntry {
     return StockEntry(
       productId: json['product_id'] as String,
       productName: product['name'] as String? ?? '',
+      measurementUnitId: product['measurement_unit_id'] as String? ?? '',
       quantity: Decimal.parse(json['quantity'].toString()),
-      lowStockThreshold: Decimal.parse(
-          (product['low_stock_threshold'] ?? '0').toString()),
+      lowStockThreshold:
+          Decimal.parse((product['low_stock_threshold'] ?? '0').toString()),
       sellingPrice: product['selling_price'] != null
           ? Decimal.parse(product['selling_price'].toString())
           : null,
       unitAbbr: unit['abbreviation'] as String? ?? '',
+      expiryDate: json['expiry_date'] != null
+          ? DateTime.tryParse(json['expiry_date'] as String)
+          : null,
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }

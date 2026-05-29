@@ -136,6 +136,7 @@ class StockAdjustmentNotifier extends AsyncNotifier<void> {
     required Decimal newQuantity,
     required Decimal currentQuantity,
     required String notes,
+    DateTime? expiryDate,
   }) async {
     final userId = ref.read(currentUserIdProvider);
     final branches = await ref.read(currentShopBranchesProvider.future);
@@ -152,6 +153,7 @@ class StockAdjustmentNotifier extends AsyncNotifier<void> {
             currentQuantity: currentQuantity,
             adjustedBy: userId,
             notes: notes,
+            expiryDate: expiryDate,
           );
       ref.invalidate(stockLevelsProvider);
     });
