@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../features/auth/presentation/providers/shop_provider.dart';
+import '../../../../domain/models/sale.dart';
+import '../../../../features/sales/presentation/providers/sales_provider.dart';
+import '../../../../features/sales/presentation/screens/sales_screen.dart';
 import '../../../../shared/router/app_routes.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_text_styles.dart';
@@ -73,7 +76,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildBody() {
     return switch (_selectedIndex) {
       0 => const _HomeTab(),
-      1 => const _PlaceholderTab(icon: Icons.point_of_sale_outlined, label: 'Sales', subtitle: 'Coming in Phase 3'),
+      1 => const _SalesTab(),
       2 => const _PlaceholderTab(icon: Icons.inventory_2_outlined, label: 'Inventory', subtitle: 'Coming in Phase 3'),
       3 => const _PlaceholderTab(icon: Icons.people_outline, label: 'Customers', subtitle: 'Coming in Phase 3'),
       _ => const _MoreTab(),
@@ -106,21 +109,7 @@ class _HomeTab extends ConsumerWidget {
           const SizedBox(height: 20),
           Text("Today's Summary", style: AppTextStyles.headline3),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              _SummaryCard(label: 'Sales', value: 'ETB 0', icon: Icons.trending_up, color: AppColors.success),
-              const SizedBox(width: 12),
-              _SummaryCard(label: 'Transactions', value: '0', icon: Icons.receipt_outlined, color: AppColors.primary),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _SummaryCard(label: 'Expenses', value: 'ETB 0', icon: Icons.money_off_outlined, color: AppColors.warning),
-              const SizedBox(width: 12),
-              _SummaryCard(label: 'Net', value: 'ETB 0', icon: Icons.account_balance_wallet_outlined, color: AppColors.info),
-            ],
-          ),
+          _TodayTotalsRow(),
           const SizedBox(height: 24),
           Text('Quick Actions', style: AppTextStyles.headline3),
           const SizedBox(height: 12),
@@ -170,6 +159,43 @@ class _BranchChip extends ConsumerWidget {
           const SizedBox(width: 4),
           Text(display.name as String, style: AppTextStyles.label.copyWith(color: AppColors.primary)),
           const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayTotalsRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final totals = ref.watch(todaySalesTotalsProvider);
+    return totals.when(
+      data: (t) => Row(
+        children: [
+          _SummaryCard(
+            label: 'Sales',
+            value: 'ETB ${t['total']?.toStringAsFixed(2) ?? '0.00'}',
+            icon: Icons.trending_up,
+            color: AppColors.success,
+          ),
+          const SizedBox(width: 12),
+          _SummaryCard(
+            label: 'Transactions',
+            value: t['count']?.toStringAsFixed(0) ?? '0',
+            icon: Icons.receipt_outlined,
+            color: AppColors.primary,
+          ),
+        ],
+      ),
+      loading: () => const SizedBox(
+        height: 80,
+        child: Center(child: LinearProgressIndicator()),
+      ),
+      error: (e, st) => Row(
+        children: [
+          _SummaryCard(label: 'Sales', value: 'ETB 0.00', icon: Icons.trending_up, color: AppColors.success),
+          const SizedBox(width: 12),
+          _SummaryCard(label: 'Transactions', value: '0', icon: Icons.receipt_outlined, color: AppColors.primary),
         ],
       ),
     );
@@ -232,6 +258,59 @@ class _QuickAction extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Sales Tab (embeds SalesScreen inline) ──────────────────────────────────
+
+class _SalesTab extends ConsumerWidget {
+  const _SalesTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sales = ref.watch(salesListProvider);
+    return sales.when(
+      data: (list) => list.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.receipt_long_outlined, size: 64, color: AppColors.textDisabled),
+                  const SizedBox(height: 12),
+                  Text('No sales today', style: AppTextStyles.headline3),
+                  const SizedBox(height: 4),
+                  Text('Tap + New Sale to record one', style: AppTextStyles.bodySmall),
+                ],
+              ),
+            )
+          : ListView.separated(
+              itemCount: list.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (ctx, i) {
+                final s = list[i];
+                final isVoided = s.status == SaleStatus.voided;
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: isVoided ? AppColors.error.withValues(alpha: 0.1) : AppColors.primaryLight,
+                    child: Icon(isVoided ? Icons.cancel_outlined : Icons.receipt_outlined,
+                        color: isVoided ? AppColors.error : AppColors.primary, size: 20),
+                  ),
+                  title: Text('ETB ${s.total.toStringAsFixed(2)}',
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                        decoration: isVoided ? TextDecoration.lineThrough : null,
+                      )),
+                  subtitle: Text('${s.items.length} item(s)', style: AppTextStyles.bodySmall),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => SaleDetailScreen(sale: s)),
+                  ),
+                );
+              },
+            ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text('Error: $e', style: AppTextStyles.bodySmall)),
     );
   }
 }
