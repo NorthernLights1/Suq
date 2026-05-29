@@ -6,39 +6,97 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/sales/presentation/screens/sales_screen.dart';
+import '../../features/sales/presentation/screens/new_sale_screen.dart';
+import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/customers/presentation/screens/customers_screen.dart';
+import '../../features/expenses/presentation/screens/expenses_screen.dart';
+import 'app_routes.dart';
 
-part 'app_routes.dart';
+/// Notifies GoRouter whenever Supabase auth state changes.
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier() {
+    Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      notifyListeners();
+    });
+  }
+}
 
-final appRouter = GoRouter(
-  initialLocation: AppRoutes.login,
-  redirect: _globalRedirect,
-  routes: [
-    GoRoute(
-      path: AppRoutes.login,
-      builder: (_, __) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.signup,
-      builder: (_, __) => const SignupScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.onboarding,
-      builder: (_, __) => const OnboardingScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.dashboard,
-      builder: (_, __) => const DashboardScreen(),
-    ),
-  ],
-);
+GoRouter createRouter() {
+  return GoRouter(
+    initialLocation: AppRoutes.login,
+    refreshListenable: _AuthRefreshNotifier(),
+    redirect: (context, state) async {
+      try {
+        final client = Supabase.instance.client;
+        final session = client.auth.currentSession;
+        final isLoggedIn = session != null;
+        final loc = state.matchedLocation;
+        final isAuthRoute = loc == AppRoutes.login || loc == AppRoutes.signup;
 
-String? _globalRedirect(BuildContext context, GoRouterState state) {
-  final session = Supabase.instance.client.auth.currentSession;
-  final isLoggedIn = session != null;
-  final isOnAuthRoute = state.matchedLocation == AppRoutes.login ||
-      state.matchedLocation == AppRoutes.signup;
+        // Not logged in → force to login
+        if (!isLoggedIn) {
+          return isAuthRoute ? null : AppRoutes.login;
+        }
 
-  if (!isLoggedIn && !isOnAuthRoute) return AppRoutes.login;
-  if (isLoggedIn && isOnAuthRoute) return AppRoutes.dashboard;
-  return null;
+        // Logged in, not on an auth screen → no redirect needed
+        if (!isAuthRoute) return null;
+
+        // Logged in, on auth screen → check if shop exists
+        final shopData = await client
+            .from('shops')
+            .select('id')
+            .eq('owner_id', session.user.id)
+            .maybeSingle();
+
+        return shopData == null ? AppRoutes.onboarding : AppRoutes.dashboard;
+      } catch (_) {
+        // If the shop query fails for any reason, fall back to login
+        final isLoggedIn =
+            Supabase.instance.client.auth.currentSession != null;
+        return isLoggedIn ? AppRoutes.dashboard : AppRoutes.login;
+      }
+    },
+    routes: [
+      GoRoute(
+        path: AppRoutes.login,
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signup,
+        builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.onboarding,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.dashboard,
+        builder: (context, state) => const DashboardScreen(),
+      ),
+      GoRoute(path: AppRoutes.sales,     builder: (context, state) => const SalesScreen()),
+      GoRoute(path: AppRoutes.newSale,   builder: (context, state) => const NewSaleScreen()),
+      GoRoute(path: AppRoutes.inventory, builder: (context, state) => const InventoryScreen()),
+      GoRoute(path: AppRoutes.customers, builder: (context, state) => const CustomersScreen()),
+      GoRoute(path: AppRoutes.expenses,  builder: (context, state) => const ExpensesScreen()),
+      GoRoute(path: AppRoutes.reports,   builder: (context, state) => const _ShellPage(title: 'Reports')),
+      GoRoute(path: AppRoutes.settings,  builder: (context, state) => const _ShellPage(title: 'Settings')),
+      GoRoute(path: AppRoutes.staff,     builder: (context, state) => const _ShellPage(title: 'Staff')),
+    ],
+  );
+}
+
+class _ShellPage extends StatelessWidget {
+  const _ShellPage({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(
+        child: Text('$title — coming soon', style: const TextStyle(color: Colors.grey)),
+      ),
+    );
+  }
 }
