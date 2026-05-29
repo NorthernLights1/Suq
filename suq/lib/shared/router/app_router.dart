@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -9,7 +8,7 @@ import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'app_routes.dart';
 
-/// A [ChangeNotifier] that refreshes the router whenever auth state changes.
+/// Notifies GoRouter whenever Supabase auth state changes.
 class _AuthRefreshNotifier extends ChangeNotifier {
   _AuthRefreshNotifier() {
     Supabase.instance.client.auth.onAuthStateChange.listen((_) {
@@ -18,39 +17,33 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   }
 }
 
-final _authRefreshNotifier = _AuthRefreshNotifier();
-
-GoRouter createRouter(WidgetRef ref) {
+GoRouter createRouter() {
   return GoRouter(
     initialLocation: AppRoutes.login,
-    refreshListenable: _authRefreshNotifier,
+    refreshListenable: _AuthRefreshNotifier(),
     redirect: (context, state) async {
-      final session = Supabase.instance.client.auth.currentSession;
+      final client = Supabase.instance.client;
+      final session = client.auth.currentSession;
       final isLoggedIn = session != null;
       final loc = state.matchedLocation;
-
       final isAuthRoute = loc == AppRoutes.login || loc == AppRoutes.signup;
 
+      // Not logged in → force to login
       if (!isLoggedIn) {
         return isAuthRoute ? null : AppRoutes.login;
       }
 
-      // Logged in — check if onboarding is needed
-      if (loc == AppRoutes.onboarding) return null;
+      // Logged in, already in onboarding or dashboard area → no redirect
+      if (!isAuthRoute) return null;
 
-      if (isAuthRoute || loc == AppRoutes.login) {
-        // Check if user has a shop
-        final shopData = await Supabase.instance.client
-            .from('shops')
-            .select('id')
-            .eq('owner_id', session.user.id)
-            .maybeSingle();
+      // Logged in, on auth screen → decide where to send them
+      final shopData = await client
+          .from('shops')
+          .select('id')
+          .eq('owner_id', session.user.id)
+          .maybeSingle();
 
-        if (shopData == null) return AppRoutes.onboarding;
-        return AppRoutes.dashboard;
-      }
-
-      return null;
+      return shopData == null ? AppRoutes.onboarding : AppRoutes.dashboard;
     },
     routes: [
       GoRoute(
@@ -69,7 +62,6 @@ GoRouter createRouter(WidgetRef ref) {
         path: AppRoutes.dashboard,
         builder: (context, state) => const DashboardScreen(),
       ),
-      // Feature routes — placeholder shells until Phase 3
       GoRoute(path: AppRoutes.sales,     builder: (context, state) => const _ShellPage(title: 'Sales')),
       GoRoute(path: AppRoutes.newSale,   builder: (context, state) => const _ShellPage(title: 'New Sale')),
       GoRoute(path: AppRoutes.inventory, builder: (context, state) => const _ShellPage(title: 'Inventory')),
@@ -82,7 +74,6 @@ GoRouter createRouter(WidgetRef ref) {
   );
 }
 
-/// Minimal scaffold shown for routes not yet built.
 class _ShellPage extends StatelessWidget {
   const _ShellPage({required this.title});
   final String title;

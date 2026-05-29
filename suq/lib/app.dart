@@ -5,16 +5,22 @@ import 'shared/router/app_router.dart';
 import 'shared/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 
-class SuqApp extends ConsumerWidget {
+class SuqApp extends ConsumerStatefulWidget {
   const SuqApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = createRouter(ref);
+  ConsumerState<SuqApp> createState() => _SuqAppState();
+}
+
+class _SuqAppState extends ConsumerState<SuqApp> {
+  late final appRouter = createRouter();
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: AppConstants.appName,
       theme: AppTheme.light,
-      routerConfig: router,
+      routerConfig: appRouter,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
