@@ -233,7 +233,7 @@ class _ProductSearch extends ConsumerWidget {
       measurementUnitId: product.measurementUnitId,
       measurementUnitAbbr: product.measurementUnitAbbr,
       quantity: Decimal.one,
-      unitPrice: Decimal.zero,
+      unitPrice: product.sellingPrice ?? Decimal.zero,
       discountAmount: Decimal.zero,
     );
     ref.read(cartProvider.notifier).addItem(item);
@@ -281,7 +281,7 @@ class _CartItemTile extends StatefulWidget {
 
 class _CartItemTileState extends State<_CartItemTile> {
   late final _priceCtrl =
-      TextEditingController(text: widget.item.unitPrice == Decimal.zero ? '' : widget.item.unitPrice.toString());
+      TextEditingController(text: widget.item.unitPrice > Decimal.zero ? widget.item.unitPrice.toString() : '');
   late final _qtyCtrl =
       TextEditingController(text: widget.item.quantity.toString());
 

@@ -8,6 +8,9 @@ import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/sales/presentation/screens/sales_screen.dart';
 import '../../features/sales/presentation/screens/new_sale_screen.dart';
+import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/customers/presentation/screens/customers_screen.dart';
+import '../../features/expenses/presentation/screens/expenses_screen.dart';
 import 'app_routes.dart';
 
 /// Notifies GoRouter whenever Supabase auth state changes.
@@ -73,9 +76,9 @@ GoRouter createRouter() {
       ),
       GoRoute(path: AppRoutes.sales,     builder: (context, state) => const SalesScreen()),
       GoRoute(path: AppRoutes.newSale,   builder: (context, state) => const NewSaleScreen()),
-      GoRoute(path: AppRoutes.inventory, builder: (context, state) => const _ShellPage(title: 'Inventory')),
-      GoRoute(path: AppRoutes.customers, builder: (context, state) => const _ShellPage(title: 'Customers')),
-      GoRoute(path: AppRoutes.expenses,  builder: (context, state) => const _ShellPage(title: 'Expenses')),
+      GoRoute(path: AppRoutes.inventory, builder: (context, state) => const InventoryScreen()),
+      GoRoute(path: AppRoutes.customers, builder: (context, state) => const CustomersScreen()),
+      GoRoute(path: AppRoutes.expenses,  builder: (context, state) => const ExpensesScreen()),
       GoRoute(path: AppRoutes.reports,   builder: (context, state) => const _ShellPage(title: 'Reports')),
       GoRoute(path: AppRoutes.settings,  builder: (context, state) => const _ShellPage(title: 'Settings')),
       GoRoute(path: AppRoutes.staff,     builder: (context, state) => const _ShellPage(title: 'Staff')),

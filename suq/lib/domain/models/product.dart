@@ -10,6 +10,7 @@ class Product extends Equatable {
     required this.measurementUnitId,
     required this.measurementUnitAbbr,
     required this.lowStockThreshold,
+    this.sellingPrice,
     required this.isActive,
   });
 
@@ -20,6 +21,7 @@ class Product extends Equatable {
   final String measurementUnitId;
   final String measurementUnitAbbr;
   final Decimal lowStockThreshold;
+  final Decimal? sellingPrice;
   final bool isActive;
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
@@ -34,8 +36,25 @@ class Product extends Equatable {
             '',
         lowStockThreshold:
             Decimal.parse(json['low_stock_threshold'].toString()),
+        sellingPrice: json['selling_price'] != null
+            ? Decimal.parse(json['selling_price'].toString())
+            : null,
         isActive: json['is_active'] as bool,
       );
+
+  Map<String, dynamic> toInsertJson({
+    required String shopId,
+    required String measurementUnitId,
+  }) =>
+      {
+        'shop_id': shopId,
+        'name': name,
+        'category_id': categoryId,
+        'measurement_unit_id': measurementUnitId,
+        'low_stock_threshold': lowStockThreshold.toString(),
+        'selling_price': sellingPrice?.toString(),
+        'is_active': isActive,
+      };
 
   @override
   List<Object?> get props => [id, name];
