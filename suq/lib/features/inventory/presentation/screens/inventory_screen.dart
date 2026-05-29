@@ -616,7 +616,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   ),
                 ),
                 loading: () => const LinearProgressIndicator(),
-                error: (e, st) => const SizedBox.shrink(),
+                error: (e, st) => Text(
+                  'Could not load units — try again',
+                  style: AppTextStyles.label.copyWith(color: AppColors.error),
+                ),
               ),
               const SizedBox(height: 16),
 
