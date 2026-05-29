@@ -22,28 +22,35 @@ GoRouter createRouter() {
     initialLocation: AppRoutes.login,
     refreshListenable: _AuthRefreshNotifier(),
     redirect: (context, state) async {
-      final client = Supabase.instance.client;
-      final session = client.auth.currentSession;
-      final isLoggedIn = session != null;
-      final loc = state.matchedLocation;
-      final isAuthRoute = loc == AppRoutes.login || loc == AppRoutes.signup;
+      try {
+        final client = Supabase.instance.client;
+        final session = client.auth.currentSession;
+        final isLoggedIn = session != null;
+        final loc = state.matchedLocation;
+        final isAuthRoute = loc == AppRoutes.login || loc == AppRoutes.signup;
 
-      // Not logged in → force to login
-      if (!isLoggedIn) {
-        return isAuthRoute ? null : AppRoutes.login;
+        // Not logged in → force to login
+        if (!isLoggedIn) {
+          return isAuthRoute ? null : AppRoutes.login;
+        }
+
+        // Logged in, not on an auth screen → no redirect needed
+        if (!isAuthRoute) return null;
+
+        // Logged in, on auth screen → check if shop exists
+        final shopData = await client
+            .from('shops')
+            .select('id')
+            .eq('owner_id', session.user.id)
+            .maybeSingle();
+
+        return shopData == null ? AppRoutes.onboarding : AppRoutes.dashboard;
+      } catch (_) {
+        // If the shop query fails for any reason, fall back to login
+        final isLoggedIn =
+            Supabase.instance.client.auth.currentSession != null;
+        return isLoggedIn ? AppRoutes.dashboard : AppRoutes.login;
       }
-
-      // Logged in, already in onboarding or dashboard area → no redirect
-      if (!isAuthRoute) return null;
-
-      // Logged in, on auth screen → decide where to send them
-      final shopData = await client
-          .from('shops')
-          .select('id')
-          .eq('owner_id', session.user.id)
-          .maybeSingle();
-
-      return shopData == null ? AppRoutes.onboarding : AppRoutes.dashboard;
     },
     routes: [
       GoRoute(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/router/app_routes.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_text_styles.dart';
@@ -35,11 +36,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           password: _passwordCtrl.text,
         );
     if (!mounted) return;
-    final error = ref.read(authNotifierProvider).error;
-    if (error != null) {
+
+    final authState = ref.read(authNotifierProvider);
+    if (authState.hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text(authState.error.toString()),
+          backgroundColor: AppColors.error,
+        ),
       );
+      return;
+    }
+
+    // Navigate explicitly — don't rely solely on the stream notifier
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final shop = await client
+          .from('shops')
+          .select('id')
+          .eq('owner_id', userId)
+          .maybeSingle();
+      if (!mounted) return;
+      context.go(shop == null ? AppRoutes.onboarding : AppRoutes.dashboard);
+    } catch (_) {
+      if (!mounted) return;
+      context.go(AppRoutes.dashboard);
     }
   }
 
